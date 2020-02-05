@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "openfile.h"
+#include "fileop.h"
 
 int main(int argc, const char* argv[]) {
   if (argc != 3 && argc != 4) {

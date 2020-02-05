@@ -4,7 +4,7 @@
 
 int main(int argc, const char* argv[]) {
   if (argc != 3 && argc != 4) {
-    printf("Usage: ./entab infile outfile n");
+    printf("Usage: ./fold infile outfile n");
     exit(1);
   }
 

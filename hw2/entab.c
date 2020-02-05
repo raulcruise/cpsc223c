@@ -7,7 +7,7 @@ int main(int argc, const char* argv[]) {
     printf("Usage: ./entab infile outfile n");
     exit(1);
   }
-
+ /* This do be here */
   FILE* fin;
   FILE* fout;
   int tabBreaks, spaceNum;
@@ -28,7 +28,7 @@ int main(int argc, const char* argv[]) {
 
   while (c != EOF) {
     if (c != ' ' && c != '\n') { // If the character is not a space or newline
-      fputc(c,fout);             // then simply copy over the character and
+      fputc(c, fout);             // then simply copy over the character and
       ++counter;                 // add 1 to our line character "counter" variable
     } else if (c == ' ') {       // If the character is a space
       ++spaceNum;                // Add one to the line space counter
