@@ -38,9 +38,12 @@ int main(int argc, const char* argv[]) {
         }
         fputc(c, fout);
       } else if (c == '*') {
+        int starBefore;
         do {
+          starBefore = 0;
+          if (c == '*') { starBefore = 1;}
           c = fgetc(fin);
-        } while (c != '*' && '/' != fgetc(fin));
+        } while (!( c == '/' && starBefore == 1));
       } else {
         fputc('/', fout);
         fputc(c, fout);
