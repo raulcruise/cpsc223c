@@ -7,7 +7,6 @@ int main(int argc, const char* argv[]) {
     printf("Usage: ./entab infile outfile n");
     exit(1);
   }
- /* This do be here */
   FILE* fin;
   FILE* fout;
   int tabBreaks, spaceNum;

@@ -4,7 +4,7 @@
 
 int main(int argc, const char* argv[]) {
   if (argc != 3) {
-    printf("Usage: ./decomments infile outfile");
+    printf("Usage: ./decomments infile outfile\n");
     exit(1);
   }
 
