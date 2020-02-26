@@ -1,4 +1,4 @@
-//
+///
 //  main.c
 //  rpn
 //
@@ -13,14 +13,12 @@
 #include <ctype.h>
 
 #define MAXOP   100    /* max size of operand/operator */
-#define NUMBER '0'     /* signal that a number was found */
 #define MAXVAL  100
-#define SINOP '1'
-#define EXPOP '2'
-#define POWOP '3'
-#define ANS   '4'
-#define SETVAR '5'
-#define GETVAR '6'
+#define NUMBER '0'     /* signal that a number was found */
+#define MATH   '1'
+#define STACK  '3'
+#define ANS    '4'
+#define VARIABLE '5'
 
 size_t sp = 0;   // aka unsigned long -- printf using %zu
 double val[MAXVAL];   // stack of values
@@ -39,22 +37,27 @@ int getop(char* s) {
   while ((s[0] = c = getch_()) == ' ' || c == '\t') { }  // skip whitespace
   s[1] = '\0';
 
-
-  switch(c) {
-    case 'a': if (getch_() == 'n' && getch_() == 's') {return ANS;}
-      break;
-    case 's': if (getch_() == 'i' && getch_() == 'n') {return SINOP;}
-      break;
-    case 'e': if (getch_() == 'x' && getch_() == 'p') {return EXPOP;}
-      break;
-    case 'p': if (getch_() == 'o' && getch_() == 'w') {return POWOP;}
-      break;
+  if (c == '#') {
+    while (isalpha(s[++i] = c = getch_()));
+    s[i] = '\0';
+    if (c != EOF ) {ungetch_(c);}
+    return STACK;
   }
 
-  if (c >= 'a' && c <= 'z') {
-    return GETVAR;
-  }else if (c >= 'A' && c <= 'Z') {
-    return SETVAR;
+  if (isalpha(c)) {
+    while (isalpha(s[++i] = c = getch_()));
+    s[i] = '\0';
+    if (c != EOF ) {ungetch_(c);}
+    if (strcmp(s, "ans") == 0) { return ANS; }
+    if ( i > 2) {
+      return MATH;
+    }
+  }
+
+  if (c == '=' || c == '?') {
+    while (isalpha(s[++i] = c = getch_())) {}
+    s[i] = '\0';
+    return VARIABLE;
   }
 
   if (!isdigit(c) && c != '.' && c != '-') { return c; }  // if not a digit, return
@@ -98,6 +101,55 @@ void clear(void) {
   memset(val, 0, MAXVAL * sizeof(double));
 }
 
+void math(char* s) {
+  double op1, op2, result = 0;
+  if (strcmp(s, "sin") == 0) {
+    result = sin(pop());
+  } else if (strcmp(s, "cos")) {
+    result = cos(pop());
+  } else if (strcmp(s, "tan")) {
+    result = tan(pop());
+  } else if (strcmp(s, "pow")) {
+    op2 =  pop();
+    result = pow(pop(), op2);
+  } else if (strcmp(s, "exp")) {
+    result = exp(pop());
+  } else {
+    fprintf(stderr, "unknown math operation\n");
+  }
+  push(result);
+}
+
+void stack(char* s) {
+  double op1, op2, result = 0;
+  if (strcmp(s, "#dup") == 0) {
+    op2 = pop();
+    push(op2);
+    push(op2);
+  } else if (strcmp(s, "#top") == 0) {
+    op2 = pop();
+    printf("\t%.8g\n", op2);
+    push(op2);
+  } else if (strcmp(s, "#clear") == 0) {
+    clear();
+  } else if (strcmp(s, "#swap") == 0) {
+      op1 = pop();
+      op2 = pop();
+      push(op1);
+      push(op2);
+  } else {
+    fprintf(stderr, "unknown stack operation\n");
+  }
+}
+
+void variables(char *s) { // 5 =a to assign a variable value
+  if (*s == '=') {        // ?a   to extract variable value
+    val[*++s - 'a'] = pop();
+  } else if (*s == '?') {
+    push(val[*++s - 'a']);
+  }
+}
+
 void rpn(void) {
   int type;
   double op1, op2, ans;
@@ -114,43 +166,18 @@ void rpn(void) {
       case '\n':    printf("\t%.8g\n", ans = pop());  break;
       case ANS:     push(ans);                  break;
       case NUMBER:  push(atof(s));              break;
-      case SINOP:   push(sin(pop()));           break;
-      case EXPOP:   push(exp(pop()));           break;
-      case POWOP:   op2 = pop(); push(pow(pop(), op2)); break;
-      case SETVAR: // If a capital letter is recieved, we'll assign the previous value to that variable
-        vars[s[0] - 'A'] = op1 = pop(); push(op1);
-        break;
-      case GETVAR: // In the case that a lower case is recieved, we'll treat it as it's variable value
-        push(vars[s[0] - 'a']);
-        break;
-      case '?': // Use question mark to check top
-        op2 = pop();
-        printf("\t%.8g\n", op2);
-        push(op2);
-        break;
-      case '_': // Use underscore to clear
-        clear();
-        break;
-      case '&': // Use and to double
-        op2 = pop();
-        push(op2);
-        push(op2);
-        break;
-      case '<': // Use left arrow to swap
-        op1 = pop();
-        op2 = pop();
-        push(op1);
-        push(op2);
-        break;
+      case MATH:    math(s);                    break;
+      case STACK:   stack(s);                   break;
+      case VARIABLE: variables(s);              break;
       case '+':     push(pop() + pop());        break;
       case '*':     push(pop() * pop());        break;
       case '-':     push(-(pop() - pop()));     break;
       case '/':
-        if ((op2 = pop()) == 0.0) { fprintf(stderr, "divide by zero\n");  break; }
+        if ((op2 = pop()) == 0.0) { fprintf(stderr, "error: divide by zero\n");  break; }
         push(pop() / op2);
         break;
       case '%':
-        if ((op2 = pop()) == 0.0) { fprintf(stderr, "mod by zero\n"); break; }
+        if ((op2 = pop()) == 0.0) { fprintf(stderr, "error: mod by zero\n"); break; }
         push(fmod(pop(), op2));
         break;
       default:
