@@ -1,5 +1,4 @@
 #include "grep.h"
-int bufcount;
 
 int main(int argc, char *argv[]) {
 
@@ -20,14 +19,14 @@ int main(int argc, char *argv[]) {
 
 	// If argc == 2, take input from stdin
 	if (argc == 2) {
-		while(fgets(line, sizeof(line), stdin) != NULL) {
-			if (execute(line)) {
-				print(line);
-				returnval = 0;
+		while(fgets(line, sizeof(line), stdin) != NULL) { // Pull input until EOF
+			if (execute(line)) { 								// Execute searches for regexp in line
+				print(line);											// Line is printed if execute
+				returnval = 0;										// Return value is set to 0 if execute
 			}
 			memset(line, 0, sizeof(line));
 		}
-	} else {
+	} else { // if argc > 2, then open files and take input from them in order
 		for(int i = 2; i < argc; ++i) {
 			file = fopen(argv[i], "r");
 			if (file) {
@@ -41,19 +40,17 @@ int main(int argc, char *argv[]) {
 					}
 					memset(line, 0, sizeof(line));
 				}
-			} else {
+			} else { // If file could not be opened, print error and set return value
 				fprintf(stderr, "error: could not open file: %s\n", argv[i]);
-				err = 1;
+				err = 2;
 			}
 		}
-	}
-	return err ? err : returnval;
+	} // If a file wasn't opened correctly, return 2, else return 0 if a match
+	return err ? err : returnval; 	// was found, else 1
 }
 
 void compile(char* regex) {
-	char *ep;
-	char *lastep;
-	char bracket[NBRA], *bracketp;
+	char *ep, *lastep, *bracketp, bracket[NBRA];
 	int cclcnt;
 
 	ep = expbuf;
@@ -190,7 +187,9 @@ void onerror(void) {
 	fprintf(stderr, "grep: Invalid regular expression\n");
 	expbuf[0] = 0;
 	nbra = 0;
+	exit(2);
 }
+
 int execute(char* line) {
 	char *p1, *p2;
 	int c;
@@ -357,7 +356,7 @@ int cclass(char *set, int c, int af) {
 	return(!af);
 }
 
-void countbuf(void) {
+void countbuf(void) { 	// Counts the characters that will be red
 	for (int i = 0; i < ESIZE + 4; ++i) {
 		if (expbuf[i] == CCHR || expbuf[i] == CCL){
 			++bufcount;
@@ -365,8 +364,8 @@ void countbuf(void) {
 	}
 }
 
-void print(char* line) {
-	 while (line != startred){
+void print(char* line) { 			// Prints line with the regexp that matched
+	 while (line != startred){ 	// with the MATCHING regexp in red
 		 printf("%c", *line++);
 	 }
 	 red();
@@ -379,7 +378,7 @@ void print(char* line) {
 	 } while(*line++ != '\n');
 }
 
-void printfilename(char* filename) {
+void printfilename(char* filename) {	// Prints file name identically as grep
 	magenta();
 	printf("%s", filename);
 	cyan();
@@ -387,18 +386,10 @@ void printfilename(char* filename) {
 	reset();
 }
 
-void cyan(void) {
-	printf("\033[0;36m");
-}
+void cyan(void) { printf("\033[0;36m"); }
 
-void magenta(void) {
-	printf("\033[0;35m");
-}
+void magenta(void) { printf("\033[0;35m"); }
 
-void red(void) {
-	printf("\033[1;31m");
-}
+void red(void) { printf("\033[1;31m"); }
 
-void reset(void) {
-	printf("\033[0m");
-}
+void reset(void) { printf("\033[0m"); }
