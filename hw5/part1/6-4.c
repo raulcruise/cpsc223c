@@ -6,6 +6,7 @@
 //  Copyright © 2020 William McCarthy. All rights reserved.
 //
 
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -14,14 +15,33 @@
 #include "tree.h"
 #include "utils.h"
 
+#define MAXCOUNT 120
+
+typedef struct llnode llnode;
+struct llnode {
+  const char* word;
+  llnode* next;
+};
+
+llnode* llnode_create(const char* word) {
+  llnode* p = (llnode*)malloc(sizeof(llnode));
+  p->word = strdup(word);    // copy of word allocated on heap
+  p->next = NULL;
+  return p;
+}
+
+llnode* globallist[MAXCOUNT];
 
 //-------------------------------------------------
-tnode* tnode_create(const char* word) {
+
+tnode* tnode_create(const char* word, int line) {
   tnode* p = (tnode*)malloc(sizeof(tnode));
   p->word = strdup(word);    // copy of word allocated on heap
   p->count = 1;
   p->left = NULL;
   p->right = NULL;
+  p->lines[0] = line;
+  p->numlines = 1;
 
   return p;
 }
@@ -59,33 +79,66 @@ void tree_delete(tree* t) { tree_deletenodes(t, t->root); }
 bool tree_empty(tree* t) { return t->size == 0; }
 size_t tree_size(tree* t) { return t->size; }
 
-static tnode* tree_addnode(tree* t, tnode** p, const char* word) {
+static tnode* tree_addnode(tree* t, tnode** p, const char* word, int line) {
   int compare;
 
   if (*p == NULL) {
-    *p = tnode_create(word);
+    *p = tnode_create(word, line);
   } else if ((compare = strcmp(word, (*p)->word)) == 0) {
     (*p)->count++;
-  } else if (compare < 0) { tree_addnode(t, &(*p)->left, word);
+    if ((*p)->lines[(*p)->numlines - 1] != line) {
+      (*p)->lines[(*p)->numlines++] = line;
+    }
+  } else if (compare < 0) { tree_addnode(t, &(*p)->left, word, line);
   } else {
-    tree_addnode(t, &(*p)->right, word);
+    tree_addnode(t, &(*p)->right, word, line);
   }
 
   return *p;
 }
 
-tnode* tree_add(tree* t, const char* word) {
-  tnode* p = tree_addnode(t, &(t->root), word);
+tnode* tree_add(tree* t, const char* word, int line) {
+  tnode* p = tree_addnode(t, &(t->root), word, line);
   t->size++;
 
   return p;
 }
 
 static void tree_printme(tree* t, tnode* p) {
-  printf("%s", p->word);
-  if (p->count > 1) { printf(" -- %d", p->count); }
+  if (p->count > 1) { printf(" %d --", p->count); }
+  printf("\t%s", p->word);
+  printf("\t\t-- [%d", p->lines[0]);
+  for (int i = 1; i < p->numlines; ++i) {
+    printf(", %d", p->lines[i]);
+  }
+  printf("]");
   printf("\n");
 }
+
+static void tree_addbycountme(tree* t, tnode* p) {
+  llnode* temp;
+  if ((temp = globallist[p->count]) == NULL) {
+    globallist[p->count] = llnode_create(p->word);
+  } else {
+    while (temp->next != NULL) {
+      temp = temp->next;
+    }
+    temp->next = llnode_create(p->word);
+  }
+}
+
+static void tree_addbycountnodes(tree* t, tnode* p) {
+  if (p == NULL) { return; }
+
+  tree_addbycountnodes(t, p->left);
+  tree_addbycountme(t, p);
+  tree_addbycountnodes(t, p->right);
+}
+
+void tree_addbycount(tree* t) {
+  tree_addbycountnodes(t, t->root);
+}
+
 
 static void tree_printnodes(tree* t, tnode* p) {
   if (p == NULL) { return; }
@@ -123,40 +176,64 @@ void tree_print_preorder(tree* t) {
 void tree_print_postorder(tree* t) {
   tree_printnodes_postorder(t, t->root);
 }
+
+void tree_printbycount() {
+  llnode* p;
+  for (int i = MAXCOUNT - 1; i >= 0; --i) {
+    if ((p = globallist[i]) != NULL) {
+      while (p != NULL) {
+        printf("%d --\t%s\n", i, p->word);
+        p = p->next;
+      }
+    }
+  }
+}
 //void tree_print_levelorder(tree* t);
 
+int is_delimiter(int c) {
+  switch(c) {
+    case ',':
+    case '?':
+    case ';':
+    case '(':
+    case ')':
+    case '!':
+      return 1;
+      break;
+    default:
+    return 0;
+  }
+}
 
-void tree_test() {
+void tree_function() {
   tree* t = tree_create();
-  char word[35];
+  char word[60];
   char c;
+  int line = 1;
   do {
     int i = 0;
-    while ((c = getc(stdin)) != ' ' && c != EOF && c != '\n') {
-      word[i++] = c;
+    while ((c = getc(stdin)) != ' ' && c != EOF && c != '\n' && !is_delimiter(c)) {
+      word[i++] = tolower(c);
     }
     if (i > 0) {
       word[i] = '\0';
-      tree_add(t, word);
+      tree_add(t, word, line);
     }
+    if (c == '\n') { ++line; }
   } while (c != EOF);
 
-  tree_print(t);
+  tree_addbycount(t);
+  tree_printbycount();
   /* These work too
   tree_print_preorder(t);
   tree_print_postorder(t);
   */
-  printf("is my tree empty? %s\n", yesorno(tree_empty(t)));
-  printf("size of tree: %zu\n\n", tree_size(t));
-
   tree_clear(t);
-  printf("is my tree empty now? %s\n", yesorno(tree_empty(t)));
-  printf("size of tree: %zu\n\n", tree_size(t));
 }
 
 
 int main(int argc, const char* argv[]) {
-  tree_test();
+  tree_function();
 
   return 0;
 }
