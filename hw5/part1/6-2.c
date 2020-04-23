@@ -15,6 +15,8 @@
 #include "tree.h"
 #include "utils.h"
 
+int N_CHARS = 6;
+
 //-------------------------------------------------
 int isnotnoise(char* word) {
   if (strcmp(word, "the") == 0) return 0;
@@ -111,11 +113,30 @@ static void tree_printme(tree* t, tnode* p) {
   printf("\n");
 }
 
+static void tree_printnodes_n(tree* t, tnode* p) {
+  static char prev[100];
+  static bool firsttime = true;
+  if (firsttime) {
+    memset(prev, 0, sizeof(prev));
+    strcpy(prev, p->word);
+  }
+
+  int compare = strncmp(prev, p->word, N_CHARS);
+  if (compare != 0) {
+    printf("\n");
+  }
+
+  strcpy(prev, p->word);
+  printf("%s ", p->word);
+
+  firsttime = false;
+}
+
 static void tree_printnodes(tree* t, tnode* p) {
   if (p == NULL) { return; }
 
   tree_printnodes(t, p->left);
-  tree_printme(t, p);
+  tree_printnodes_n(t, p);
   tree_printnodes(t, p->right);
 }
 
@@ -161,7 +182,10 @@ int isDataType(const char* word) {
 }
 //void tree_print_levelorder(tree* t);
 
-void tree_function() {
+void tree_function(int argc, const char* argv[]) {
+  if (argc == 3) {
+    N_CHARS = atoi(argv[2]);
+  }
   char delimiters[] = " .,;[](){=><\"\\/+%!-&|}*\n";
   tree* t = tree_create();
   char line[1000];
@@ -182,7 +206,7 @@ void tree_function() {
 
 
 int main(int argc, const char* argv[]) {
-  tree_function();
+  tree_function(argc, argv);
 
   return 0;
 }
